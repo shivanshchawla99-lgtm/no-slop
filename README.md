@@ -6,6 +6,47 @@ Most "sound more human" prompting only fixes surface tics — banning "delve" an
 
 Use it for anything meant to be read by a person: blog posts, newsletters, LinkedIn/X posts, emails, cold outreach, cover letters, bios, About pages, product descriptions, announcements.
 
+## Before / after
+
+**LinkedIn post**
+
+❌ Before:
+> In today's fast-paced digital world, businesses are constantly looking for ways to streamline their operations. That's why I'm excited to announce that we've launched our new invoicing tool. It's not just about sending invoices — it's about giving business owners back their time. Whether you're a freelancer or a growing agency, this tool empowers you to get paid faster and focus on what matters most. The best part? Setup takes less than five minutes. Let's face it, nobody got into business to chase down payments!
+
+✅ After:
+> I built this because I was manually chasing down four late invoices last March, at 11pm, from my phone. The tool sends the reminder for you, three days before and three days after the due date. Setup is one CSV upload. If you freelance and you're still doing this by hand, it's free through June.
+
+The before has a vapid opener, a "not just X, it's Y" scaffold, a fake question pivot, a rule-of-three ("freelancer or agency," "get paid faster... focus on..."), and a closer that states a moral. The after opens mid-scene, names one real detail (11pm, March, a phone), and ends on a plan instead of a lesson.
+
+**Cold outreach email**
+
+❌ Before:
+> Dear Maria, I hope this message finds you well! I'm a passionate web developer dedicated to helping small businesses elevate their online presence. I noticed your website could benefit from a redesign, and I'd love to hop on a quick 15-minute call to discuss how we can work together to unlock your site's full potential.
+
+✅ After:
+> Hi Maria, your menu page took about 8 seconds to load on my phone (tested on 4G this morning). That's usually enough for people to give up and check Google Maps instead. I rebuild sites for small food businesses; did a bakery's shop page last year. Want me to send a 2-minute video of what I'd fix first? Alex
+
+The before is generic enough to send to any business on earth ("elevate," "unlock," "full potential") and asks for a call before earning one. The after leads with a specific, checkable observation, states the credential as one line with proof, and asks a small question instead of a calendar slot.
+
+**Product description**
+
+❌ Before:
+> Nestled in the heart of Delhi, our vibrant store boasts a myriad of rare plants, carefully curated to bring joy and tranquility into your home. Whether you're a seasoned plant parent or just starting your journey, we have something for everyone.
+
+✅ After:
+> The shop's in Shahpur Jat, down the lane past the cafe. Right now there are about 40 species on the shelves, mostly aroids and a few variegated monstera we don't usually get in stock.
+
+The before is scene-setting filler ("nestled," "vibrant," "boasts," "myriad," "journey") that says nothing a reader can check. The after gives a location, a count, and a specific detail a customer could walk in and verify.
+
+Run any draft through the linter to see this scored directly:
+
+```bash
+python3 scripts/slop_check.py before.md --format social
+python3 scripts/slop_check.py after.md --format social
+```
+
+The "before" examples above score well under the 90 pass bar; the "after" versions clear it.
+
 ## What's in here
 
 - [`SKILL.md`](SKILL.md) — the skill definition: before-you-draft checklist, voice rules, and format-specific guidance.
