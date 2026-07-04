@@ -62,7 +62,7 @@ Norms, slop-in-the-wild, and good examples per format. The voice rules in SKILL.
 
 **Example**:
 - ❌ "Dear Maria, I hope this message finds you well! I'm a passionate web developer dedicated to helping small businesses elevate their online presence..."
-- ✅ "Hi Maria, your menu page took about 8 seconds to load on my phone (tested on 4G this morning). That's usually enough for people to give up and check Google Maps instead. I rebuild sites for small food businesses; did Orchids n More's shop page last year. Want me to send a 2-minute video of what I'd fix first? Shivansh"
+- ✅ "Hi Maria, your menu page took about 8 seconds to load on my phone (tested on 4G this morning). That's usually enough for people to give up and check Google Maps instead. I rebuild sites for small food businesses; did a bakery's shop page last year. Want me to send a 2-minute video of what I'd fix first? Alex"
 
 ## Work / everyday email
 
