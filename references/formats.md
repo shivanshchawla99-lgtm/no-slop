@@ -85,3 +85,27 @@ Norms, slop-in-the-wild, and good examples per format. The voice rules in SKILL.
 **Opening example**:
 - ❌ "I am excited to apply for the Content Marketing Executive position at your esteemed organization."
 - ✅ "I've spent two years making people care about houseplants on Instagram. A family shop, no ad budget, 800 to 6,000 followers. I'd like to do the harder version of that for Flipkart."
+
+## Serious / sensitive note (condolence, apology, bad news)
+
+**Norms**: Short. Plain. Say the hard thing in the first two lines, offer something concrete, stop. Restraint reads as sincerity here; nearly every casual-register device is wrong. Lint with `--register formal`.
+
+**Slop shape**: Two kinds. The AI kind: "I am deeply saddened to learn of your loss. Please accept my heartfelt condolences during this difficult time." (could be mail-merged). The overcorrected kind: applying this skill's casual moves — a concrete-number opener, a wry aside, a punchy ender — to grief or apology. Breezy sincerity is worse than stiff sincerity.
+
+**Do instead**:
+- Name the thing directly ("I heard about your father", "We broke your data, and I'm sorry").
+- One concrete offer beats three sentiments ("Rohan and I will cover the client calls").
+- One sincere short beat is allowed ("Truly."). One.
+- No lessons, no silver linings, no "everything happens".
+
+## Technical report / postmortem / documentation
+
+**Norms**: The reader wants facts, causes, and decisions, fast. Field vocabulary is the topic, not slop; "certificate rotation" stays "certificate rotation". Contractions optional. Numbers, timestamps, named systems everywhere. Lint with `--register formal`.
+
+**Slop shape**: Padding around the facts: "In today's rapidly evolving infrastructure landscape..." intros, "learnings" sections that moralize ("This incident reminds us that vigilance..."), passive fog ("mistakes were made", "it was determined that"), and hedged non-conclusions. The AI tell here isn't long words — it's *ownerless claims and tidy blamelessness*.
+
+**Do instead**:
+- Lead with impact: who was affected, how much, for how long.
+- Name the actual cause and the actual decision, with an owner ("the deploy script allowed partial rotation; we retired it").
+- Keep the human markers that survive formality: "but" and "because", a first-person call where someone made one ("I chose to roll forward instead of back"), variance in paragraph depth.
+- End on the follow-ups, not a moral.

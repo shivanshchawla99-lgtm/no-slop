@@ -7,6 +7,31 @@ Checks derived from:
   - Russell et al., "StoryScope" (2026): structural tells — thematic
     over-explanation, embodied-emotion performativity, missing specificity,
     tidy endings.
+  - Akinwande et al. (IJCI 2024): average word length is the single
+    strongest AI/human classifier feature (AI ~4.97 chars, human ~4.39).
+  - Desaire et al. (2023, 99%+ accuracy): equivocal words (but/however/
+    although/because) mark humans; vague group nouns mark AI; humans vary
+    paragraph length (stddev of paragraph words alone = AUC 0.98), write
+    both <11-word and >34-word sentences, and use ? ( ) ; : freely.
+  - Georgiou (BDCC 2026) rapid review: surface tells alone are evadable;
+    structural and lexical layers must be checked together.
+  - Terčon & Dobrovoljc (2026) survey of 44 studies: some cues are
+    consistent (low diversity, repetition, impersonal register), others
+    flip by genre/model — so register-conditional checks, not absolutes.
+  - O'Sullivan (2025): humans disperse in style-space; each LLM forms a
+    tight cluster (GPT-4 tighter than 3.5). Uniform rule-following is
+    itself a fingerprint — hence the multi-file house-style audit.
+  - Etaat (2026): cue directions depend on the human reference population;
+    topic vocabulary is forced, style vocabulary is chosen — hence topic
+    words (repeated 3+ times) are excluded from word-length/nominal stats.
+
+Register: pass --register formal for reports, postmortems, legal or
+condolence writing. It relaxes the checks whose evidence is
+register-conditional (contractions, word length, nominalizations, lone
+short-fragment sentences). Hard bans stay hard in every register.
+
+House-style audit: pass 2+ files to score each AND get a cross-piece
+skeleton report (shared openers, enders, repeated distinctive phrases).
 
 Usage:
   python3 slop_check.py DRAFT.md --format blog|social|email|cover|generic [--json]
@@ -181,16 +206,25 @@ def detect_parallel(sents):
                         % (w, w, w))
 
     # sentence-level detectors
+    oneword = []
     lens = [word_count(s) for s in sents]
     for i, s in enumerate(sents):
         # (c) one-word drama fragment: "Revolutionary." "Silence." "Everything."
         #     Skip sign-offs (a bare name has no terminal .!?) and price/number
         #     labels ("₹650.", "$40") which are structural, not rhetorical.
+        #     Tracked separately: a single lone one-worder is "sparingly, with
+        #     intention" territory; stacks and repeats are the reflexive tell.
         if lens[i] == 1 and re.search(r"[.!?]\s*$", s) \
                 and not re.match(r"^[₹$€£]?[\d.,]+[.!?]?$", s.strip()):
-            hits.append("one-word drama sentence ('%s')" % s.strip())
-        # (d) two-beat fragment stack: two consecutive sentences <=3 words each
-        if i + 1 < len(sents) and lens[i] <= 3 and lens[i + 1] <= 3:
+            oneword.append("one-word sentence ('%s')" % s.strip())
+        # (d) two-beat fragment stack: two consecutive sentences <=3 words
+        #     each. Greetings/signoffs ("With love, Anika") aren't beats.
+        _signoff = re.compile(
+            r"^(hi|hey|hello|dear|thanks|thank you|best|cheers|regards|"
+            r"warm|kind|with (?:love|thanks|gratitude)|yours|sincerely|see you)\b", re.I)
+        if i + 1 < len(sents) and lens[i] <= 3 and lens[i + 1] <= 3 \
+                and not _signoff.match(sents[i].strip()) \
+                and not _signoff.match(sents[i + 1].strip()):
             hits.append("fragment stack ('%s %s')"
                         % (sents[i].strip(), sents[i + 1].strip()))
         # (e) echo repetition: a short neighbor whose content words are a
@@ -207,12 +241,14 @@ def detect_parallel(sents):
                     hits.append("echo repetition ('%s' / '%s')"
                                 % (a.strip()[:30], b.strip()[:30]))
     # de-dup preserving order
-    seen, out = set(), []
-    for h in hits:
-        if h not in seen:
-            seen.add(h)
-            out.append(h)
-    return out
+    def dedup(xs):
+        seen, out = set(), []
+        for h in xs:
+            if h not in seen:
+                seen.add(h)
+                out.append(h)
+        return out
+    return dedup(hits), dedup(oneword)
 
 
 # Tier B: plain cross-sentence contrast — humans use this deliberately; allow one.
@@ -333,6 +369,21 @@ DECORATION_RE = re.compile(
     "\U0001D400-\U0001D7FF]"
 )
 
+EQUIVOCAL_RE = re.compile(
+    r"\b(?:but|however|although|though|because|yet|except|unless)\b", re.I)
+
+VAGUE_GROUP_PATTERNS = [
+    r"\b(?:many|some|most|several|countless)\s+(?:people|experts|researchers|"
+    r"professionals|users|individuals|studies|entrepreneurs|leaders)\b",
+    r"\bexperts\s+(?:agree|say|believe|suggest|recommend|warn)\b",
+    r"\bresearchers\s+(?:say|believe|suggest|have\s+found|agree)\b",
+    r"\bstudies\s+(?:show|suggest|have\s+shown)\b",
+    r"\bothers\s+(?:may|might|argue|believe|say)\b",
+    r"\bindividuals\b",
+    r"\bit\s+is\s+widely\s+(?:known|believed|accepted|recognized)\b",
+    r"\bpeople\s+(?:are\s+)?(?:increasingly|often)\s+(?:turning|looking|realizing)\b",
+]
+
 CONTRACTION_RE = re.compile(
     r"(?i)\b(?:\w+n't|it's|that's|there's|here's|what's|who's|let's|i'm|i've|"
     r"i'll|i'd|you're|you've|you'll|you'd|we're|we've|we'll|we'd|they're|"
@@ -342,11 +393,26 @@ CONTRACTION_RE = re.compile(
 
 # ---------------------------------------------------------------- checks
 
-def run_checks(doc, fmt):
-    """Returns list of dicts: id, name, points, earned, evidence, applicable."""
+def run_checks(doc, fmt, register="casual"):
+    """Returns list of dicts: id, name, points, earned, evidence, applicable.
+
+    register="formal" relaxes the register-conditional checks (contractions,
+    word length, nominalizations, lone one-word sentences) whose direction
+    flips with genre in the research. Hard bans are register-independent."""
     results = []
     raw, prose, sents = doc.raw, doc.prose, doc.sentences
     W = max(doc.words, 1)
+
+    # Topic vocabulary (content words repeated 3+ times) is forced by the
+    # subject, not chosen as style; exclude it from lexical-register stats
+    # so a post about "certificate rotation" isn't punished for its topic.
+    _low_all = re.findall(r"(?<![A-Za-z])[a-z][a-z'\-]*", prose)
+    _freq = {}
+    for w in _low_all:
+        base = re.sub(r"[^a-z]", "", w)
+        if len(base) > 2 and base not in STOP:
+            _freq[base] = _freq.get(base, 0) + 1
+    topic_words = {w for w, c in _freq.items() if c >= 3}
 
     def add(cid, name, points, ratio, ev="", applicable=True):
         results.append({
@@ -458,11 +524,23 @@ def run_checks(doc, fmt):
     add("triads", "Rule-of-three not a habit", 5, graded(len(triad_hits), allowed_t),
         evidence(triad_hits))
 
-    # -- 10b parallel / staccato repetition
-    par_hits = detect_parallel(sents)
-    n = len(par_hits)
-    ratio = 1.0 if n == 0 else (0.3 if n == 1 else 0.0)
-    add("parallel", "No parallel/staccato repetition", 6, ratio, evidence(par_hits))
+    # -- 10b parallel / staccato repetition. One lone one-word sentence is a
+    # deliberate device (free in formal register, cheap elsewhere); repeats
+    # and the other five forms are the reflexive tell.
+    par_hits, oneword_hits = detect_parallel(sents)
+    free_ow = 1 if register == "formal" else 0
+    eff = len(par_hits) + max(0, len(oneword_hits) - free_ow) * (
+        0.5 if len(oneword_hits) - free_ow == 1 else 1.0)
+    if eff == 0:
+        ratio = 1.0
+    elif eff <= 0.5:
+        ratio = 0.8
+    elif eff <= 1:
+        ratio = 0.3
+    else:
+        ratio = 0.0
+    add("parallel", "No parallel/staccato repetition", 6, ratio,
+        evidence(par_hits + oneword_hits))
 
     # -- 11 exclamation density
     nex = raw.count("!")
@@ -535,17 +613,18 @@ def run_checks(doc, fmt):
         add("rhythm_cv", "Sentence lengths vary (burstiness)", 8, 1.0, "",
             applicable=False)
 
-    # -- 19 short + long sentence present
+    # -- 19 short + long sentence present. Desaire: humans write <11-word AND
+    # >34-word sentences; full credit needs a genuine long one (>=30 words).
     if doc.prose_words >= 120 and len(sents) >= 6:
         lens = [word_count(s) for s in sents]
         has_short = min(lens) <= 5
-        has_long = max(lens) >= 23
-        ratio = (0.5 * has_short) + (0.5 * has_long)
+        long_part = 0.5 if max(lens) >= 30 else (0.25 if max(lens) >= 23 else 0.0)
+        ratio = (0.5 * has_short) + long_part
         ev = []
         if not has_short:
             ev.append("no sentence of <=5 words")
-        if not has_long:
-            ev.append("no sentence of >=23 words")
+        if long_part < 0.5:
+            ev.append("longest sentence %d words (want one >=30)" % max(lens))
         add("range", "Has both punch-short and long sentences", 5, ratio,
             "; ".join(ev))
     else:
@@ -573,15 +652,27 @@ def run_checks(doc, fmt):
         add("samestart", "No monotone sentence-start runs", 3, 1.0, "",
             applicable=False)
 
-    # -- 21 paragraph variety
+    # -- 21 paragraph variety. Desaire: stddev of paragraph word-counts alone
+    # separates human from AI documents at AUC 0.98 — the strongest single
+    # structural stat known. Measured as CV of words-per-paragraph.
     if fmt != "social" and len(doc.paragraphs) >= 4:
-        pl = [len(split_sentences(p)) for p in doc.paragraphs]
-        distinct = len(set(pl))
-        ratio = 1.0 if distinct >= 3 else (0.5 if distinct == 2 else 0.0)
-        add("paravar", "Paragraph shapes vary", 4, ratio,
-            "paragraph sentence-counts %s look uniform" % pl if ratio < 1 else "")
+        pw = [word_count(p) for p in doc.paragraphs]
+        mean_pw = statistics.mean(pw)
+        pcv = statistics.stdev(pw) / mean_pw if mean_pw > 0 else 0
+        if pcv >= 0.40:
+            ratio = 1.0
+        elif pcv >= 0.28:
+            ratio = 0.7
+        elif pcv >= 0.18:
+            ratio = 0.3
+        else:
+            ratio = 0.0
+        add("paravar", "Paragraph lengths vary (word-count CV)", 6, ratio,
+            "paragraph word-counts %s, CV %.2f (want >= 0.40)" % (pw, pcv)
+            if ratio < 1 else "")
     else:
-        add("paravar", "Paragraph shapes vary", 4, 1.0, "", applicable=False)
+        add("paravar", "Paragraph lengths vary (word-count CV)", 6, 1.0, "",
+            applicable=False)
 
     # -- 22 specificity density
     tokens = list(re.finditer(r"[A-Za-z0-9][\w''\-]*", prose))
@@ -608,17 +699,105 @@ def run_checks(doc, fmt):
         ratio, "specificity density %.2f per 100 words (want >= 1.5)" % density
         if ratio < 1 else "")
 
-    # -- 23 contractions
-    nc = len(CONTRACTION_RE.findall(prose))
-    need = 1 if (fmt == "cover" or doc.prose_words < 150) else max(1, doc.prose_words // 150)
-    ratio = 1.0 if nc >= need else (0.5 if nc >= 1 else 0.0)
-    add("contractions", "Contractions used naturally", 4, ratio,
-        "%d contractions (want >= %d)" % (nc, need) if ratio < 1 else "")
+    # -- 23 contractions. Register-conditional: natural in casual prose,
+    # legitimately absent in reports, legal text, and formal documents.
+    if register == "formal":
+        add("contractions", "Contractions used naturally", 4, 1.0, "",
+            applicable=False)
+    else:
+        nc = len(CONTRACTION_RE.findall(prose))
+        need = 1 if (fmt == "cover" or doc.prose_words < 150) else max(1, doc.prose_words // 150)
+        ratio = 1.0 if nc >= need else (0.5 if nc >= 1 else 0.0)
+        add("contractions", "Contractions used naturally", 4, ratio,
+            "%d contractions (want >= %d)" % (nc, need) if ratio < 1 else "")
 
     # -- 24 somatic emotion performance
     hits = find_all(SOMATIC_PATTERNS, raw)
     add("somatic", "Feelings named, not performed through the body", 4,
         1.0 if not hits else 0.0, evidence(hits))
+
+    # -- 25 average word length (Akinwande 2024: top classifier feature,
+    # importance 0.47 — AI ~4.97 chars/word, human ~4.39; direction is
+    # register-conditional per Terčon/Dobrovoljc, so formal relaxes it).
+    # Measured on lowercase tokens (proper nouns excluded) minus topic words.
+    low_words = [w for w in re.findall(r"(?<![A-Za-z])[a-z][a-z'\-]*", prose)
+                 if re.sub(r"[^a-z]", "", w) not in topic_words]
+    if doc.prose_words >= 40 and len(low_words) >= 25:
+        awl = (sum(len(re.sub(r"[^a-z]", "", w)) for w in low_words)
+               / len(low_words))
+        full, half = (4.95, 5.15) if register == "formal" else (4.65, 4.85)
+        if awl <= full:
+            ratio = 1.0
+        elif awl <= half:
+            ratio = 0.5
+        else:
+            ratio = 0.0
+        add("wordlen", "Short words, not latinate inflation", 8, ratio,
+            "avg word length %.2f chars excl. topic words (want <= %.2f)"
+            % (awl, full) if ratio < 1 else "")
+    else:
+        add("wordlen", "Short words, not latinate inflation", 8, 1.0, "",
+            applicable=False)
+
+    # -- 26 equivocal texture (Desaire 2023: 'but', 'however', 'although',
+    # 'because' are each individually human-elevated; AI states, humans
+    # qualify and connect).
+    if doc.prose_words >= 120:
+        neq = len(EQUIVOCAL_RE.findall(prose))
+        add("equivocal", "Qualifies and concedes (but/because/although)", 4,
+            1.0 if neq >= 1 else 0.0,
+            "zero equivocal connectives in %d words; humans concede and"
+            " reverse" % doc.prose_words if neq == 0 else "")
+    else:
+        add("equivocal", "Qualifies and concedes (but/because/although)", 4,
+            1.0, "", applicable=False)
+
+    # -- 27 vague crowd attribution (Desaire 2023: ChatGPT cites ambiguous
+    # groups — 'others', 'researchers' — where humans name the person).
+    hits = find_all(VAGUE_GROUP_PATTERNS, prose)
+    n = len(hits)
+    ratio = 1.0 if n == 0 else (0.4 if n == 1 else 0.0)
+    add("vaguegroups", "No vague crowd attributions", 4, ratio, evidence(hits))
+
+    # -- 28 nominalization density. The mechanism behind AI's higher average
+    # word length (Akinwande): abstract -tion/-ity/-ment nouns doing the work
+    # verbs should ("the migration required organizational effort" vs "moving
+    # took a weekend"). Calibrated: human-sounding drafts run 0-3.5 per 100
+    # words, generic slop 4-5, de-surfaced AI prose 15+.
+    if doc.prose_words >= 60:
+        nom = [n for n in re.findall(
+            r"\b[a-z][a-z'\-]*(?:tion|sion|ment|ness|ity|ance|ence)s?\b",
+            prose.lower()) if re.sub(r"s$", "", n) not in topic_words
+            and n not in topic_words]
+        nom_density = len(nom) * 100.0 / doc.prose_words
+        t1, t2, t3 = (6.0, 8.0, 12.0) if register == "formal" else (3.5, 5.0, 8.0)
+        if nom_density <= t1:
+            ratio = 1.0
+        elif nom_density <= t2:
+            ratio = 0.5
+        elif nom_density <= t3:
+            ratio = 0.2
+        else:
+            ratio = 0.0
+        add("nominal", "Verbs over abstract -tion/-ity nouns", 5, ratio,
+            "%.1f nominalizations per 100 words excl. topic words (want <= %.1f): %s"
+            % (nom_density, t1, ", ".join(sorted(set(nom))[:6]))
+            if ratio < 1 else "")
+    else:
+        add("nominal", "Verbs over abstract -tion/-ity nouns", 5, 1.0, "",
+            applicable=False)
+
+    # -- 29 punctuation range (Desaire 2023: humans use ? ( ) ; : more; AI
+    # writes wall-to-wall commas and periods). Em dash stays banned.
+    if doc.prose_words >= 150:
+        npunct = sum(prose.count(c) for c in "?(;:")
+        add("punctrange", "Uses human punctuation (? parens ; :)", 3,
+            1.0 if npunct >= 1 else 0.0,
+            "no ?, (, ; or : anywhere in %d words" % doc.prose_words
+            if npunct == 0 else "")
+    else:
+        add("punctrange", "Uses human punctuation (? parens ; :)", 3,
+            1.0, "", applicable=False)
 
     return results
 
@@ -630,36 +809,117 @@ def score(results):
     return round(earned * 100.0 / total, 1) if total else 0.0
 
 
+def house_style_audit(docs, names):
+    """Cross-piece skeleton report (O'Sullivan 2025: uniform habits across
+    pieces are their own fingerprint). Warns when most pieces share a
+    structural move or reuse a distinctive phrase."""
+    n = len(docs)
+    warns = []
+
+    def content_sents(d):
+        # skip greeting/signoff-ish one-liners for opener/ender analysis
+        return [s for s in d.sentences
+                if word_count(s) >= 2 and not re.match(
+                    r"^(hi|hey|hello|dear|subject|with love|best|regards|thanks)\b",
+                    s, re.I)]
+
+    openers_digit = enders_short = 0
+    first_words = []
+    for d in docs:
+        cs = content_sents(d)
+        if not cs:
+            continue
+        if re.search(r"\d", cs[0]):
+            openers_digit += 1
+        if word_count(cs[-1]) <= 6:
+            enders_short += 1
+        m = re.match(r"[\"'“]?([\w']+)", cs[0])
+        if m:
+            first_words.append(m.group(1).lower())
+    if n >= 3 and openers_digit / n > 0.6:
+        warns.append("%d/%d pieces open on a number/date detail — a good move "
+                     "becoming a signature" % (openers_digit, n))
+    if n >= 3 and enders_short / n > 0.6:
+        warns.append("%d/%d pieces end on a short punchy beat (<=6 words) — "
+                     "vary the exits" % (enders_short, n))
+    for w in set(first_words):
+        if first_words.count(w) >= max(2, n // 2 + 1) and w not in ("i", "the"):
+            warns.append("multiple pieces open with '%s'" % w)
+
+    # distinctive 3-grams shared across pieces
+    grams = {}
+    for i, d in enumerate(docs):
+        toks = [t.lower() for t in re.findall(r"[a-z][a-z'\-]*", d.prose.lower())]
+        seen = set()
+        for j in range(len(toks) - 2):
+            g = " ".join(toks[j:j + 3])
+            ws = g.split()
+            if sum(1 for w in ws if w in STOP) >= 3 or g in seen:
+                continue
+            seen.add(g)
+            grams.setdefault(g, set()).add(i)
+    shared = sorted((g for g, s in grams.items() if len(s) >= 2),
+                    key=lambda g: -len(grams[g]))[:5]
+    for g in shared:
+        warns.append("phrase '%s' appears in %d pieces (%s)"
+                     % (g, len(grams[g]),
+                        ", ".join(names[i] for i in sorted(grams[g]))))
+
+    print("\nHOUSE-STYLE AUDIT (%d pieces)" % n)
+    if warns:
+        for w in warns:
+            print("  [VARY] %s" % w)
+    else:
+        print("  no shared skeletons or repeated phrases detected")
+
+
 def main():
     ap = argparse.ArgumentParser(description="Score text against AI-slop guidelines")
-    ap.add_argument("file", help="path to text/markdown file, or - for stdin")
+    ap.add_argument("files", nargs="+",
+                    help="text/markdown file(s), or - for stdin; 2+ files "
+                         "adds a cross-piece house-style audit")
     ap.add_argument("--format", default="generic",
                     choices=["blog", "social", "email", "cover", "generic"])
+    ap.add_argument("--register", default="casual", choices=["casual", "formal"],
+                    help="formal relaxes register-conditional checks "
+                         "(contractions, word length, nominalizations, lone "
+                         "one-word sentences); hard bans stay hard")
     ap.add_argument("--json", action="store_true", help="emit JSON")
     args = ap.parse_args()
 
-    raw = sys.stdin.read() if args.file == "-" else open(args.file, encoding="utf-8").read()
-    doc = Doc(raw)
-    results = run_checks(doc, args.format)
-    pct = score(results)
+    docs, all_out = [], []
+    for f in args.files:
+        raw = sys.stdin.read() if f == "-" else open(f, encoding="utf-8").read()
+        doc = Doc(raw)
+        results = run_checks(doc, args.format, args.register)
+        pct = score(results)
+        docs.append(doc)
+        all_out.append({"file": f, "format": args.format,
+                        "register": args.register, "words": doc.words,
+                        "score": pct, "checks": results})
 
     if args.json:
-        print(json.dumps({
-            "format": args.format, "words": doc.words, "score": pct,
-            "checks": results,
-        }, indent=2, ensure_ascii=False))
+        print(json.dumps(all_out if len(all_out) > 1 else all_out[0],
+                         indent=2, ensure_ascii=False))
         return
 
-    print("slop_check — format=%s, %d words" % (args.format, doc.words))
-    print("SCORE: %.1f / 100  (target: >= 90)\n" % pct)
-    for r in results:
-        if not r["applicable"]:
-            continue
-        mark = "PASS" if r["passed"] else ("PART" if r["earned"] > 0 else "FAIL")
-        line = "  [%s] %-52s %4.1f/%d" % (mark, r["name"], r["earned"], r["points"])
-        print(line)
-        if r["evidence"] and not r["passed"]:
-            print("         -> %s" % r["evidence"])
+    for out in all_out:
+        if len(all_out) > 1:
+            print("\n=== %s" % out["file"])
+        print("slop_check — format=%s, register=%s, %d words"
+              % (out["format"], out["register"], out["words"]))
+        print("SCORE: %.1f / 100  (target: >= 90)\n" % out["score"])
+        for r in out["checks"]:
+            if not r["applicable"]:
+                continue
+            mark = "PASS" if r["passed"] else ("PART" if r["earned"] > 0 else "FAIL")
+            line = "  [%s] %-52s %4.1f/%d" % (mark, r["name"], r["earned"], r["points"])
+            print(line)
+            if r["evidence"] and not r["passed"]:
+                print("         -> %s" % r["evidence"])
+
+    if len(docs) >= 2:
+        house_style_audit(docs, [o["file"].split("/")[-1] for o in all_out])
 
 
 if __name__ == "__main__":

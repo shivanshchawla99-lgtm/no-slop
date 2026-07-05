@@ -112,12 +112,13 @@ AI metaphors are plausible-but-interchangeable; human metaphors come from specif
 
 ## 12. Monotone rhythm
 
-Uniform sentence length, uniform paragraph shape, unvarying cadence. The fix is mechanical and it works:
+Uniform sentence length, uniform paragraph shape, unvarying cadence. This is the best-evidenced structural tell there is: in Desaire et al.'s scientist-vs-ChatGPT study, the standard deviation of paragraph length *alone* separated the two at AUC 0.98, and sentence-length variation, sentences under 11 words, and sentences over 34 words were all individually human markers. The fix is mechanical and it works:
 
 1. Find your longest paragraph. Cut its weakest sentence.
 2. Find two adjacent medium sentences. Merge one pair; split another elsewhere.
 3. Add one very short sentence where it lands hardest. Like this.
-4. Check paragraph silhouette: if all paragraphs are 2–4 sentences, make one 1 and one 6.
+4. Let one sentence run properly long — past 30 words — where the material carries it; AI sentences cluster in the 15–25 band and almost never break 34.
+5. Check paragraph silhouette in *words*, not sentences: if every paragraph is 35–50 words, make one 80 and one 10. Uniform word counts with varied sentence counts still reads as AI to a classifier.
 
 ## 13. Filler and over-explanation
 
@@ -165,9 +166,62 @@ The tic that outlives every other edit, because it reads as rhythm and craft whi
 **One-word drama sentences** — a lone word for effect:
 - ❌ "The launch was a success. Revolutionary." / "Then the room went quiet. Silence."
 - ✅ "The launch worked better than we expected." (Attach it to a clause or cut it.)
+- Exception: one sincere beat in a serious register is a human device, not drama — "Call me any time. Truly." in a condolence note. The tell is manufactured emphasis and repetition, not the form itself; the linter charges a lone one lightly and stacks heavily.
 
 **Rhetorical modifier lists** — the same comparative across items:
 - ❌ "faster loads, faster checkout, faster everything."
 - ✅ "The whole site loads in under a second now." (State the concrete result once.)
 
 When editing AI-sounding text, this is often the last thing left after you've fixed the obvious tells — the piece reads clean sentence by sentence but has three "We X. We Y. We Z." runs and a couple of one-word punches. Hunt them specifically.
+
+## 17. Latinate inflation
+
+The strongest *measured* AI tell of all: average word length. A 500K-essay Random Forest classifier put it first among all features (importance 0.47) — AI averages ~5.0 characters per word, humans ~4.4. The half-character gap is entirely abstract Latinate nouns and their -tion/-ity/-ment/-ance suffixes standing where verbs should be. This survives every phrase-level edit: you can strip all the banned phrases and the text still *weighs* wrong.
+
+- ❌ "The migration process required approximately one weekend of dedicated organizational effort."
+- ✅ "Moving everything took a weekend, most of it renaming files."
+- ❌ "Offline accessibility represents an increasingly essential requirement for modern knowledge management workflows."
+- ✅ "I need my notes to open on a train with no signal."
+- ❌ "The transition delivered measurable improvements across my daily documentation activities."
+- ✅ "My notes open faster now. All of them, everywhere."
+
+Swap list (not exhaustive, but these carry most of the weight): utilize→use, functionality→features, requirement→need, approximately→about, sufficient→enough, additional→more, purchase→buy, assist→help, attempt→try, demonstrate→show, individuals→people, numerous→many, prior to→before, in order to→to, possess→have, obtain→get.
+
+The test: read a sentence and count nouns that end in -tion, -ity, -ment, -ness, -ance. Two or more in one sentence means the verb is hiding inside one of them. "We made a decision to do an evaluation of..." is "we decided to evaluate", which is "we tried".
+
+## 18. Vague crowd attribution
+
+Desaire et al. found ChatGPT reliably cites ambiguous groups — "others", "researchers" — where human scientists name the specific person whose work they're describing. The generalized form shows up everywhere: claims launder themselves through an anonymous crowd instead of an owner.
+
+- ❌ "Experts agree that offline access is becoming increasingly important."
+- ❌ "Many professionals experience difficulties retrieving documents without stable connections."
+- ❌ "Studies show that consistency matters more than intensity."
+- ✅ Name the source: "Hal Higdon's plan has three runs a week for exactly this reason."
+- ✅ Or own it: "I think offline access stopped being optional the third time Notion hung on a train."
+- ✅ Or make it checkable: "Two clients this year asked for local-first tools by name."
+
+The test: who, specifically? If the sentence can't answer, the attribution is decoration — cut it and let the claim stand (or fall) as yours. Related human marker from the same study: real writing contains *numbers* and *named people*, and it uses "because" to connect claims to reasons instead of stacking assertions.
+
+## 19. The house-style trap
+
+The failure mode of every anti-slop rulebook, this one included. Stylometry on creative writing finds that humans form broad, scattered clusters while each LLM forms a tight one — and GPT-4 clusters *tighter* than GPT-3.5. Getting better at a fixed style makes you more identifiable, not less. The same trap awaits a writer (or model) that executes this file's fixes identically every time: every piece opening on a concrete number, every piece closing on a three-word shrug ("Just in case."), one wry parenthetical per piece, like a watermark.
+
+Signs you're in the trap, across a set of pieces:
+
+- The openers are interchangeable: swap piece A's first line onto piece B and nothing breaks.
+- The endings all land on the same beat (short fragment, wry admission, concrete plan).
+- A distinctive phrase or move repeats ("I tried to...", "honestly," the em-dash-shaped parenthetical).
+- Every piece uses every device: max specificity, max rhythm variation, one digression, one short sentence — the full checklist, every time.
+
+The fix is portfolio-level, not piece-level: rotate skeletons, skip devices deliberately, let some pieces be plainer than the skill's ceiling. Run the linter's multi-file mode (`slop_check.py a.md b.md c.md`) to get the audit. One dull-but-fitting piece in a varied set is more human than five brilliant pieces with the same fingerprint.
+
+## 20. Register misfit (when "violations" are correct)
+
+The research cues are conditional on genre and on who the human baseline is. Versus scientists, humans write the longer, more varied sentences; versus intermediate language learners, the AI does. AI hotel reviews are *more* emotional than human ones; AI news is *less*. The only near-universal signals are low variance, impersonal drift, and repetition — most other rules bend with the register. Concretely:
+
+- A postmortem saying "certificate rotation will now be atomic across services" is correct. "We'll now rotate certs everywhere at once, together" is worse writing. Field vocabulary is topic, not slop; don't de-Latinize the subject matter.
+- A condolence note with no concrete openers, no digression, no joke, and one lone "Truly." is exactly right. Forcing the casual-register moves into it produces the creepiest text there is: breezy grief.
+- A legal notice with zero contractions is a legal notice, not a robot.
+- A three-line work email doesn't need a dangling thread, a 30-word sentence, or a paragraph-length contrast. Short formats satisfy the variance rules trivially; don't pad them to make room for devices.
+
+Rule of thumb: hard bans (contrast scaffolds, fake pivots, slop lexicon, vague crowds, em dashes, moral endings) hold in every register, because no register *requires* those. Everything else serves the reader's situation, and the situation wins. Lint accordingly: `--register formal`.

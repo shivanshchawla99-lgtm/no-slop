@@ -2,7 +2,7 @@
 
 A Claude Code skill that writes prose the way people actually write, not the way AI defaults to.
 
-Most "sound more human" prompting only fixes surface tics — banning "delve" and em-dash overuse. That's not enough. A 2026 study of 61,608 stories found AI writing detectable at 93% accuracy from *structural* choices alone, even after the surface style was edited to pass. This skill targets both layers: word-level habits (filler verbs, hedging, tidy transitions) and structural ones (over-explained themes, uniform sentence rhythm, showing-not-telling emotion, missing specificity).
+Most "sound more human" prompting only fixes surface tics — banning "delve" and em-dash overuse. That's not enough. A 2026 study of 61,608 stories found AI writing detectable at 93% accuracy from *structural* choices alone, even after the surface style was edited to pass; another separated ChatGPT from working scientists at 99%+ using twenty countable features, and a 500K-essay classifier ranked plain average word length as the strongest tell of all. This skill targets both layers: word-level habits (latinate inflation, filler verbs, hedging, tidy transitions) and structural ones (over-explained themes, uniform sentence and paragraph rhythm, missing equivocation, showing-not-telling emotion, missing specificity).
 
 Use it for anything meant to be read by a person: blog posts, newsletters, LinkedIn/X posts, emails, cold outreach, cover letters, bios, About pages, product descriptions, announcements.
 
@@ -69,9 +69,11 @@ Claude Code will pick it up automatically. Invoke it directly with `/no-slop`, o
 
 ```bash
 python3 scripts/slop_check.py draft.md --format blog
+python3 scripts/slop_check.py report.md --format generic --register formal
+python3 scripts/slop_check.py a.md b.md c.md   # adds a cross-piece house-style audit
 ```
 
-Add `--json` for machine-readable output. A score of 90+ is the passing bar; anything lower prints the exact line and check that failed.
+Add `--json` for machine-readable output. A score of 90+ is the passing bar; anything lower prints the exact line and check that failed. `--register formal` relaxes the checks whose research evidence is genre-conditional (contractions, word length, nominalizations) for reports, postmortems, and serious notes — hard bans stay hard. Passing several files audits them as a set for shared openers, enders, and repeated phrases, because uniform habits across pieces are their own AI tell.
 
 ## Status
 
