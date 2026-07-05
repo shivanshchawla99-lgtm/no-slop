@@ -55,17 +55,47 @@ The "before" examples above score well under the 90 pass bar; the "after" versio
 - [`references/research-notes.md`](references/research-notes.md) — the empirical studies this skill is built on.
 - [`scripts/slop_check.py`](scripts/slop_check.py) — a standalone linter that scores a draft 0–100 against the same checks, stdlib-only, no dependencies.
 
-## Installing
+## Setup — pick your Claude
 
-Copy the contents of this repo into your Claude Code skills directory:
+Two ways to use this skill, depending on which Claude you use. No coding needed for either.
 
-```bash
-git clone https://github.com/<your-username>/no-slop.git ~/.claude/skills/no-slop
-```
+### If you use Claude on the web or in the desktop/mobile app (claude.ai)
 
-Claude Code will pick it up automatically. Invoke it directly with `/no-slop`, or just ask Claude to write something human-facing — the skill's description is written to trigger on its own.
+You can't install skills into Claude.ai directly, but you can hand Claude the same instructions in one paste. It works just as well.
 
-## Using the linter standalone
+1. Open [SKILL.md](SKILL.md) in this repo and click the "copy raw file contents" button (or select all and copy).
+2. Start a new Claude conversation.
+3. Paste the whole thing as your first message, then add a line at the bottom: **"Use these rules when I ask you to write anything below. Confirm you've read them and wait for my next message."**
+4. Claude will confirm. From then on, in that conversation, ask it to draft anything — a LinkedIn post, an email, a cover letter — and it'll follow the skill.
+
+Optional: for even better results, also paste [references/patterns.md](references/patterns.md) and [references/formats.md](references/formats.md) in the same first message. Bigger paste, sharper output.
+
+Tip: if the conversation gets long and Claude starts drifting back to AI-sounding prose, start a fresh conversation and paste again. Long chats gradually forget early instructions.
+
+### If you use Claude Code (the terminal tool)
+
+This is the easier setup and the one skills were built for.
+
+1. Open a terminal (Mac: press ⌘+Space, type "Terminal", hit enter. Windows: search "Terminal" or "PowerShell" in the Start menu).
+2. Copy and paste this line into the terminal and press enter:
+
+   ```bash
+   git clone https://github.com/shivanshchawla99-lgtm/no-slop.git ~/.claude/skills/no-slop
+   ```
+
+3. That's it. Next time you use Claude Code, either type `/no-slop` to invoke it directly, or just ask Claude to write something for a real reader — it'll notice and use the skill on its own.
+
+If you don't have `git` installed, you can also just download the repo as a ZIP: on the GitHub page, click the green "Code" button → "Download ZIP", unzip it, and move the folder to `~/.claude/skills/no-slop` (that's a hidden folder in your home directory — on Mac, in Finder press ⌘+Shift+G and type `~/.claude/skills/` to open it).
+
+### Testing it worked
+
+Ask Claude: "Write a short LinkedIn post announcing I just started a new job as a marketing analyst at Meesho."
+
+Without the skill you'll get something with "thrilled to announce", emojis, and "here's to new beginnings". With the skill loaded, it'll sound like a human wrote it — plain, one real detail, no exclamation marks.
+
+## For advanced users: the standalone linter
+
+The repo also includes a Python script that scores any draft 0–100 against the skill's checks. You only need this if you want to check writing without using Claude at all — for example, checking marketing copy, or scoring drafts your team wrote by hand.
 
 ```bash
 python3 scripts/slop_check.py draft.md --format blog
@@ -74,6 +104,8 @@ python3 scripts/slop_check.py a.md b.md c.md   # adds a cross-piece house-style 
 ```
 
 Add `--json` for machine-readable output. A score of 90+ is the passing bar; anything lower prints the exact line and check that failed. `--register formal` relaxes the checks whose research evidence is genre-conditional (contractions, word length, nominalizations) for reports, postmortems, and serious notes — hard bans stay hard. Passing several files audits them as a set for shared openers, enders, and repeated phrases, because uniform habits across pieces are their own AI tell.
+
+Requires Python 3.8 or newer. Most Macs already have it; on Windows install it from [python.org](https://www.python.org/downloads/).
 
 ## Status
 
